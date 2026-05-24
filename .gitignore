@@ -1,0 +1,33 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.pytest_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+
+# Local secrets and runtime state
+.aether_lc/
+data/
+problems/
+
+# Local render/build scratch files
+tmp_docx_render/
+tmp_pdf/
+tmp_pdf2/
+
+# Unimplemented v0.1 placeholders
+tests/
+src/aether_lc/errors.py
+src/aether_lc/models.py
+src/aether_lc/repository.py
+src/aether_lc/service.py
+
+# Planning documents and local generated docs
+*roadmap*.docx
+*策划书*.docx
