@@ -1,4 +1,5 @@
 import httpx
+
 BASE_URL = "https://leetcode.cn"
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -26,6 +27,57 @@ DIFFICULTY_MAP = {
     3: "Hard",
 }
 
+PROBLEM_LIST_QUERY = """
+query problemsetQuestionList(
+    $categorySlug: String,
+    $limit: Int,
+    $skip: Int,
+    $filters: QuestionListFilterInput
+) {
+    problemsetQuestionList(
+        categorySlug: $categorySlug,
+        limit: $limit,
+        skip: $skip,
+        filters: $filters
+    ) {
+        total
+        questions {
+            frontendQuestionId
+            title
+            titleSlug
+            difficulty
+            paidOnly
+            topicTags {
+                name
+                slug
+            }
+        }
+    }
+}
+"""
+
+QUESTION_DETAIL_QUERY = """
+query questionData($titleSlug: String!) {
+    question(titleSlug: $titleSlug) {
+        questionFrontendId
+        title
+        translatedTitle
+        titleSlug
+        difficulty
+        content
+        translatedContent
+        topicTags {
+            name
+            slug
+        }
+        codeSnippets {
+            lang
+            langSlug
+            code
+        }
+    }
+}
+"""
 
 class LeetCodeClient:
     def __init__(self, cookies: dict[str, str] | None = None):
@@ -56,7 +108,7 @@ class LeetCodeClient:
         try:
             response = self.client.get("/api/problems/all/", timeout=20)
             response.raise_for_status()
-            payload = response.json()
+            result = response.json()
         except (httpx.HTTPError, ValueError):
             return None
 
@@ -75,7 +127,7 @@ class LeetCodeClient:
             },
         }
 
-        for item in payload.get("stat_status_pairs", []):
+        for item in result.get("stat_status_pairs", []):
             difficulty_level = item.get("difficulty", {}).get("level")
             difficulty = DIFFICULTY_MAP.get(difficulty_level)
 
@@ -106,6 +158,41 @@ class LeetCodeClient:
             "solved": problem_profile.get("solved"),
             "total": problem_profile.get("total"),
         }
+
+    def problem_list(self, limit: int = 50, skip: int = 0) -> dict | None:
+        payload = {
+            "operationName": "problemsetQuestionList",
+            "query": PROBLEM_LIST_QUERY,
+            "variables": {
+                "categorySlug": "",
+                "limit": limit,
+                "skip": skip,
+                "filters": {},
+            },
+        }
+        try:
+            response = self.client.post("/graphql/", json=payload, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return result.get("data", {}).get("problemsetQuestionList")
+
+    def problem_detail(self, title_slug: str) -> dict | None:
+        payload = {
+        "operationName": "questionData",
+        "query": QUESTION_DETAIL_QUERY,
+        "variables": {
+            "titleSlug": title_slug,
+        },
+    }
+        try:
+            response = self.client.post("/graphql/", json=payload, timeout=10)
+            response.raise_for_status()
+            result = response.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return result.get("data", {}).get("question")
 
     def close(self) -> None:
         self.client.close()

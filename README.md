@@ -2,15 +2,17 @@
 
 Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 
-当前版本是 `v0.1.0`。这个版本只聚焦一个完整的小闭环：复用登录态、检查 session 状态、展示账号详情和刷题统计。
+当前版本是 `v0.2.0`。这个版本在 `v0.1.0` 的登录和账号详情基础上，新增了在线题目索引查询与题目详情展示。
 
-## v0.1.0 功能
+## v0.2.0 功能
 
 - 复用本机浏览器中的 `leetcode.cn` 登录态。
 - 浏览器 Cookie 自动读取失败时，支持手动粘贴 Cookie。
 - 将本地 session 保存到 `.aether_lc/session.json`。
 - 检查本地 session 是否仍然有效。
 - 展示账号基础信息和已通过题目统计。
+- 支持按题号在线获取 LeetCode 中文站题目详情。
+- 支持分页展示题目索引列表。
 - 使用独立的 `ui.py` 管理终端输出，避免 CLI 逻辑和展示逻辑混在一起。
 
 ## 环境要求
@@ -82,6 +84,23 @@ Solved: All / Easy / Medium / Hard
 Total: All / Easy / Medium / Hard
 ```
 
+### 获取题目详情
+
+```powershell
+uv run lc get 1
+```
+
+根据题号查找 LeetCode 中文站题目，并在线展示题目详情、难度、标签和题面内容。
+
+### 展示题目列表
+
+```powershell
+uv run lc show
+uv run lc show --limit 20 --skip 0
+```
+
+分页展示 LeetCode 中文站题目索引。默认展示前 50 道题。
+
 ## 安全说明
 
 本项目会在本地保存 LeetCode 登录态，用于复用浏览器 session。该文件可能包含敏感 Cookie 信息。
@@ -99,11 +118,12 @@ problems/
 
 ## 当前限制
 
-- `v0.1.0` 暂不支持拉取题目详情。
-- `v0.1.0` 暂不生成本地 `solution.py`。
-- `v0.1.0` 暂不运行本地测试用例。
-- `v0.1.0` 暂不支持远程提交。
+- `v0.2.0` 暂不保存题目详情到本地数据库。
+- `v0.2.0` 暂不生成本地 `solution.py`。
+- `v0.2.0` 暂不运行本地测试用例。
+- `v0.2.0` 暂不支持远程提交。
 - `lc profile` 的刷题统计来自 LeetCode 中文站题库状态接口，因此可能需要等待几秒。
+- `lc get` 和 `lc show` 依赖 LeetCode 中文站接口和网络状态。
 
 ## 开发与验证
 
@@ -118,14 +138,16 @@ uv run ruff check .
 ```powershell
 uv run lc status
 uv run lc profile
+uv run lc get 1
+uv run lc show
 ```
 
-项目已经安装 `pytest`，但 `v0.1.0` 暂时还没有有意义的自动化测试。
+项目已经安装 `pytest`，但 `v0.2.0` 暂时还没有有意义的自动化测试。
 
 ## 版本路线
 
 - `v0.1`: 登录、session 状态检查、账号详情展示。
-- `v0.2`: 题目列表与题目详情拉取。
+- `v0.2`: 在线题目索引查询与题目详情展示。
 - `v0.3`: 本地题目工作区生成。
 - `v0.4`: 本地样例运行器。
 - `v0.5`: 远程提交与判题结果轮询。
@@ -137,8 +159,9 @@ uv run lc profile
 ```text
 src/aether_lc/
   auth.py      浏览器/手动 Cookie 读取与本地 session 存储
-  client.py    LeetCode 中文站 HTTP 客户端与账号统计
+  client.py    LeetCode 中文站 HTTP 客户端、账号统计与题目请求
   cli.py       Typer 命令入口
+  problem.py   题号解析与题目数据标准化
   ui.py        基于 Rich 的终端输出
 ```
 

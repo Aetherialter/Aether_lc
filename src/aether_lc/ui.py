@@ -1,12 +1,55 @@
 from collections.abc import Iterator
 from contextlib import contextmanager
+from html import unescape
+from html.parser import HTMLParser
+import re
+import shutil
 from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-console = Console()
+console = Console(width=shutil.get_terminal_size(fallback=(120, 24)).columns)
+
+
+def _terminal_width() -> int:
+    return shutil.get_terminal_size(fallback=(console.width, 24)).columns
+
+
+class _ProblemHTMLParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"p", "div", "ul", "ol", "pre"}:
+            self.parts.append("\n")
+        elif tag == "li":
+            self.parts.append("\n- ")
+        elif tag == "br":
+            self.parts.append("\n")
+        elif tag == "sup":
+            self.parts.append("^")
+        elif tag == "sub":
+            self.parts.append("_")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"p", "div", "ul", "ol", "pre"}:
+            self.parts.append("\n")
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+
+def _html_to_text(content_html: str) -> str:
+    parser = _ProblemHTMLParser()
+    parser.feed(content_html)
+    text = unescape("".join(parser.parts))
+    text = text.replace("\xa0", " ")
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 @contextmanager
@@ -41,4 +84,67 @@ def render_profile(profile: dict[str, Any]) -> None:
     table.add_row("Solved", f"All {solved['All']} | Easy {solved['Easy']} | Medium {solved['Medium']} | Hard {solved['Hard']}")
     table.add_row("Total", f"All {total['All']} | Easy {total['Easy']} | Medium {total['Medium']} | Hard {total['Hard']}")
 
-    console.print(Panel(table, border_style="green"))
+    console.print(Panel(table, border_style="green", width=_terminal_width()))
+
+
+def render_problem_list(problems: list[Any]) -> None:
+    if not problems:
+        warning("没有可展示的题目")
+        return
+
+    table = Table(
+        title=f"LeetCode CN Problems ({len(problems)})",
+        border_style="cyan",
+        expand=True,
+        width=_terminal_width(),
+    )
+    table.add_column("ID", style="cyan", justify="right", no_wrap=True)
+    table.add_column("Title", style="white", overflow="fold")
+    table.add_column("Difficulty", justify="center", no_wrap=True)
+    table.add_column("Paid", justify="center", no_wrap=True)
+    table.add_column("Tags", style="dim", overflow="fold")
+
+    difficulty_styles = {
+        "Easy": "green",
+        "Medium": "yellow",
+        "Hard": "red",
+    }
+
+    for problem in problems:
+        difficulty = problem.difficulty or "-"
+        difficulty_style = difficulty_styles.get(difficulty, "white")
+        paid_text = "[yellow]Paid[/yellow]" if problem.paid_only else "[green]Free[/green]"
+        tags = ", ".join(problem.tags[:4])
+        if len(problem.tags) > 4:
+            tags = f"{tags}, ..."
+
+        table.add_row(
+            problem.question_id,
+            problem.title or "-",
+            f"[{difficulty_style}]{difficulty}[/{difficulty_style}]",
+            paid_text,
+            tags or "-",
+        )
+
+    console.print(table)
+
+
+def render_problem_detail(problem: Any) -> None:
+    tags = ", ".join(problem.tags) if problem.tags else "-"
+
+    meta = Table.grid(padding=(0, 2))
+    meta.add_column(style="cyan", no_wrap=True)
+    meta.add_column(style="white")
+    meta.add_row("ID", problem.question_id)
+    meta.add_row("Slug", problem.title_slug)
+    meta.add_row("Difficulty", problem.difficulty)
+    meta.add_row("Tags", tags)
+
+    title = f"{problem.question_id}. {problem.title}"
+    console.print(Panel(meta, title=title, border_style="cyan", width=_terminal_width()))
+
+    content_text = _html_to_text(problem.content_html)
+    console.print(Panel(content_text or "-", title="题面", border_style="white", width=_terminal_width()))
+
+    if not problem.python_code:
+        warning("未找到 Python3 代码模板")
