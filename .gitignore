@@ -26,7 +26,6 @@ tests/
 src/aether_lc/errors.py
 src/aether_lc/models.py
 src/aether_lc/repository.py
-src/aether_lc/service.py
 
 # Planning documents and local generated docs
 *roadmap*.docx
