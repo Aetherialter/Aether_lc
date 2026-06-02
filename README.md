@@ -2,9 +2,9 @@
 
 Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 
-当前版本是 `v0.2.0`。这个版本在 `v0.1.0` 的登录和账号详情基础上，新增了在线题目索引查询与题目详情展示。
+当前版本是 `v0.3.0`。这个版本在 `v0.2.0` 的在线题目查询基础上，新增了纯在线解题模板工作流：拉取题目后覆盖写入根目录 `solution.py`，并自动打开该文件。
 
-## v0.2.0 功能
+## v0.3.0 功能
 
 - 复用本机浏览器中的 `leetcode.cn` 登录态。
 - 浏览器 Cookie 自动读取失败时，支持手动粘贴 Cookie。
@@ -13,6 +13,10 @@ Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 - 展示账号基础信息和已通过题目统计。
 - 支持按题号在线获取 LeetCode 中文站题目详情。
 - 支持分页展示题目索引列表。
+- 支持 `lc solve <题号>` 在线拉取题目、展示题面、覆盖写入根目录 `solution.py` 并打开。
+- 生成 `solution.py` 时会自动加入常用 Python 刷题标准库导入。
+- 使用独立的 `service.py` 管理应用层取题流程，复用 `get` 与 `solve` 的核心逻辑。
+- 使用独立的 `workspace.py` 管理 `solution.py` 生成与打开逻辑。
 - 使用独立的 `ui.py` 管理终端输出，避免 CLI 逻辑和展示逻辑混在一起。
 
 ## 环境要求
@@ -92,6 +96,20 @@ uv run lc get 1
 
 根据题号查找 LeetCode 中文站题目，并在线展示题目详情、难度、标签和题面内容。
 
+### 生成解题模板
+
+```powershell
+uv run lc solve 1
+```
+
+根据题号在线获取题目详情，展示题面，并覆盖写入根目录：
+
+```text
+solution.py
+```
+
+`solution.py` 是当前题目的通用解题模板文件。`lc solve` 会强制覆盖该文件，请在切换题目前自行保存当前解法。
+
 ### 展示题目列表
 
 ```powershell
@@ -116,14 +134,17 @@ problems/
 
 当前 `.gitignore` 已经忽略这些路径。
 
+根目录 `solution.py` 是公开的空占位文件，会被提交到仓库；它不应包含个人解法后再提交。
+
 ## 当前限制
 
-- `v0.2.0` 暂不保存题目详情到本地数据库。
-- `v0.2.0` 暂不生成本地 `solution.py`。
-- `v0.2.0` 暂不运行本地测试用例。
-- `v0.2.0` 暂不支持远程提交。
+- `v0.3.0` 暂不保存题目详情到本地数据库。
+- `v0.3.0` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
+- `v0.3.0` 暂不运行本地测试用例。
+- `v0.3.0` 暂不支持远程提交。
+- `lc solve` 会覆盖根目录 `solution.py`。
 - `lc profile` 的刷题统计来自 LeetCode 中文站题库状态接口，因此可能需要等待几秒。
-- `lc get` 和 `lc show` 依赖 LeetCode 中文站接口和网络状态。
+- `lc get`、`lc show` 和 `lc solve` 依赖 LeetCode 中文站接口和网络状态。
 
 ## 开发与验证
 
@@ -140,15 +161,16 @@ uv run lc status
 uv run lc profile
 uv run lc get 1
 uv run lc show
+uv run lc solve 1
 ```
 
-项目已经安装 `pytest`，但 `v0.2.0` 暂时还没有有意义的自动化测试。
+项目已经安装 `pytest`，但 `v0.3.0` 暂时还没有有意义的自动化测试。
 
 ## 版本路线
 
 - `v0.1`: 登录、session 状态检查、账号详情展示。
 - `v0.2`: 在线题目索引查询与题目详情展示。
-- `v0.3`: 本地题目工作区生成。
+- `v0.3`: 纯在线解题模板工作流，覆盖写入单个 `solution.py`。
 - `v0.4`: 本地样例运行器。
 - `v0.5`: 远程提交与判题结果轮询。
 - `v0.6`: 稳定性、诊断命令、文档和 GitHub Actions。
@@ -162,7 +184,9 @@ src/aether_lc/
   client.py    LeetCode 中文站 HTTP 客户端、账号统计与题目请求
   cli.py       Typer 命令入口
   problem.py   题号解析与题目数据标准化
+  service.py   应用层流程，复用登录态、题目索引和题目详情获取逻辑
   ui.py        基于 Rich 的终端输出
+  workspace.py solution.py 生成与打开逻辑
 ```
 
 ## 项目定位
