@@ -2,9 +2,9 @@
 
 Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 
-当前版本是 `v0.3.0`。这个版本在 `v0.2.0` 的在线题目查询基础上，新增了纯在线解题模板工作流：拉取题目后覆盖写入根目录 `solution.py`，并自动打开该文件。
+当前版本是 `v0.4.0`。这个版本在 `v0.3.0` 的在线解题模板基础上，新增了单文件本地测试工作流：`lc solve` 生成带 `run_cases()` 的 `solution.py`，`lc test` 运行该文件中的本地断言。
 
-## v0.3.0 功能
+## v0.4.0 功能
 
 - 复用本机浏览器中的 `leetcode.cn` 登录态。
 - 浏览器 Cookie 自动读取失败时，支持手动粘贴 Cookie。
@@ -14,7 +14,8 @@ Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 - 支持按题号在线获取 LeetCode 中文站题目详情。
 - 支持分页展示题目索引列表。
 - 支持 `lc solve <题号>` 在线拉取题目、展示题面、覆盖写入根目录 `solution.py` 并打开。
-- 生成 `solution.py` 时会自动加入常用 Python 刷题标准库导入。
+- 生成 `solution.py` 时会自动加入常用 Python 刷题标准库导入和 `run_cases()` 本地测试入口。
+- 支持 `lc test` 运行根目录 `solution.py`，根据退出码展示本地测试通过或失败。
 - 使用独立的 `service.py` 管理应用层取题流程，复用 `get` 与 `solve` 的核心逻辑。
 - 使用独立的 `workspace.py` 管理 `solution.py` 生成与打开逻辑。
 - 使用独立的 `ui.py` 管理终端输出，避免 CLI 逻辑和展示逻辑混在一起。
@@ -110,6 +111,20 @@ solution.py
 
 `solution.py` 是当前题目的通用解题模板文件。`lc solve` 会强制覆盖该文件，请在切换题目前自行保存当前解法。
 
+### 运行本地测试
+
+```powershell
+uv run lc test
+```
+
+`lc test` 会运行根目录 `solution.py` 中的 `run_cases()`。你可以在 `run_cases()` 中手动添加本地断言：
+
+```python
+assert solution.twoSum([2, 7, 11, 15], 9) == [0, 1]
+```
+
+默认只显示本地测试通过或失败，不展示 Python traceback。
+
 ### 展示题目列表
 
 ```powershell
@@ -128,8 +143,6 @@ uv run lc show --limit 20 --skip 0
 ```text
 .aether_lc/
 .venv/
-data/
-problems/
 ```
 
 当前 `.gitignore` 已经忽略这些路径。
@@ -138,11 +151,12 @@ problems/
 
 ## 当前限制
 
-- `v0.3.0` 暂不保存题目详情到本地数据库。
-- `v0.3.0` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
-- `v0.3.0` 暂不运行本地测试用例。
-- `v0.3.0` 暂不支持远程提交。
+- `v0.4.0` 暂不保存题目详情到本地数据库。
+- `v0.4.0` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
+- `v0.4.0` 暂不自动解析题面样例，`run_cases()` 中的断言需要手动添加。
+- `v0.4.0` 暂不支持远程提交。
 - `lc solve` 会覆盖根目录 `solution.py`。
+- `lc test` 默认隐藏 Python traceback，只展示本地测试结果。
 - `lc profile` 的刷题统计来自 LeetCode 中文站题库状态接口，因此可能需要等待几秒。
 - `lc get`、`lc show` 和 `lc solve` 依赖 LeetCode 中文站接口和网络状态。
 
@@ -162,16 +176,17 @@ uv run lc profile
 uv run lc get 1
 uv run lc show
 uv run lc solve 1
+uv run lc test
 ```
 
-项目已经安装 `pytest`，但 `v0.3.0` 暂时还没有有意义的自动化测试。
+项目已经安装 `pytest`，但 `v0.4.0` 暂时还没有有意义的自动化测试。
 
 ## 版本路线
 
 - `v0.1`: 登录、session 状态检查、账号详情展示。
 - `v0.2`: 在线题目索引查询与题目详情展示。
 - `v0.3`: 纯在线解题模板工作流，覆盖写入单个 `solution.py`。
-- `v0.4`: 本地样例运行器。
+- `v0.4`: 单文件本地测试工作流，执行 `solution.py` 中的 `run_cases()`。
 - `v0.5`: 远程提交与判题结果轮询。
 - `v0.6`: 稳定性、诊断命令、文档和 GitHub Actions。
 - `v1.0`: 完整的 LeetCode 中文站本地刷题 CLI 工作流。
@@ -186,7 +201,7 @@ src/aether_lc/
   problem.py   题号解析与题目数据标准化
   service.py   应用层流程，复用登录态、题目索引和题目详情获取逻辑
   ui.py        基于 Rich 的终端输出
-  workspace.py solution.py 生成与打开逻辑
+  workspace.py solution.py 生成、打开与本地运行逻辑
 ```
 
 ## 项目定位

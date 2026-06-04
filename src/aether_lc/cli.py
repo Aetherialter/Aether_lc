@@ -20,7 +20,7 @@ from aether_lc.service import (
     get_problem_summaries,
     get_user_status,
 )
-from aether_lc.workspace import write_solution_file
+from aether_lc.workspace import run_solution_file, write_solution_file
 
 app = Typer(help="aether_lc 适用于中文站leetcode的刷题本地化cli程序")
 
@@ -87,6 +87,15 @@ def solve(question_id: str) -> None:
         error("未找到 Python3 代码模板")
         raise Exit(1)
     write_solution_file(problem_detail.python_code)
+
+
+@app.command()
+def test() -> None:
+    result = run_solution_file()
+    if result.returncode:
+        error("本地测试失败")
+        raise Exit(result.returncode)
+    success("本地测试通过")
 
 
 if __name__ == "__main__":
