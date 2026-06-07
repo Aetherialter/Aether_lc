@@ -1,8 +1,14 @@
+from dataclasses import dataclass
 from os import startfile
+from pathlib import Path
 import subprocess
 
 
-SOLUTION_FILE = "solution.py"
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+SOLUTION_FILE = PROJECT_ROOT / "solution.py"
+METADATA_PREFIX = "# @lc "
+START_FLAG = "# @lc submit_begin"
+END_FLAG = "# @lc submit_end"
 
 SOLUTION_IMPORTS = """from typing import *
 from collections import Counter, defaultdict, deque
@@ -25,13 +31,36 @@ if __name__ == "__main__":
 """
 
 
-def build_solution_content(python_code: str) -> str:
-    return f"{SOLUTION_IMPORTS}\n\n{python_code.rstrip()}\n\n{SOLUTION_CASE}\n"
+@dataclass(frozen=True)
+class ProblemMetadata:
+    problem_id: str
+    title: str
+    title_slug: str
 
 
-def write_solution_file(python_code: str) -> None:
+class WorkspaceError(ValueError):
+    pass
+
+
+def build_solution_content(python_code: str, metadata: ProblemMetadata) -> str:
+    metadata_content = (
+        f"{METADATA_PREFIX}problem_id: {metadata.problem_id}\n"
+        f"{METADATA_PREFIX}title: {metadata.title}\n"
+        f"{METADATA_PREFIX}title_slug: {metadata.title_slug}\n\n"
+    )
+    return (
+        f"{metadata_content}"
+        f"{SOLUTION_IMPORTS}\n\n"
+        f"{START_FLAG}\n"
+        f"{python_code.rstrip()}\n"
+        f"{END_FLAG}\n\n"
+        f"{SOLUTION_CASE}\n"
+    )
+
+
+def write_solution_file(python_code: str, metadata: ProblemMetadata) -> None:
     with open(SOLUTION_FILE, "w", encoding="utf-8") as file:
-        file.write(build_solution_content(python_code))
+        file.write(build_solution_content(python_code, metadata))
     startfile(SOLUTION_FILE)
 
 
@@ -40,4 +69,47 @@ def run_solution_file() -> subprocess.CompletedProcess[str]:
         ["uv", "run", "python", str(SOLUTION_FILE)],
         capture_output=True,
         text=True,
+        cwd=PROJECT_ROOT,
+    )
+
+
+def parse_solution_submission() -> tuple[ProblemMetadata, str]:
+    metadata: dict[str, str] = {}
+    start_flag = end_flag = False
+    content = ""
+    with SOLUTION_FILE.open(mode="r", encoding="utf-8") as file:
+        for string in file:
+            line = string.strip()
+            if line == END_FLAG:
+                end_flag = True
+                break
+            if start_flag:
+                content += string
+            if line.startswith(METADATA_PREFIX):
+                item = line.removeprefix(METADATA_PREFIX)
+                key, separator, value = item.partition(":")
+                if separator:
+                    metadata[key.strip()] = value.strip()
+            if line == START_FLAG:
+                start_flag = True
+
+    if not start_flag or not end_flag:
+        raise WorkspaceError("solution.py 提交区域标记不完整，请先执行 lc solve <题号>")
+
+    content = content.strip()
+    if not content:
+        raise WorkspaceError("solution.py 提交区域为空")
+
+    if not all(
+        [metadata.get("problem_id"), metadata.get("title"), metadata.get("title_slug")]
+    ):
+        raise WorkspaceError("solution.py 缺少元数据(problem_id, title, title_slug)")
+
+    return (
+        ProblemMetadata(
+            problem_id=metadata["problem_id"],
+            title=metadata["title"],
+            title_slug=metadata["title_slug"],
+        ),
+        content,
     )

@@ -79,6 +79,7 @@ query questionData($titleSlug: String!) {
 }
 """
 
+
 class LeetCodeClient:
     def __init__(self, cookies: dict[str, str] | None = None):
         self.client = httpx.Client(
@@ -94,7 +95,7 @@ class LeetCodeClient:
         )
         if cookies:
             self.client.cookies.update(cookies)
-    
+
     def user_status(self) -> dict | None:
         try:
             response = self.client.post("/graphql/", json=USER_STATUS_QUERY, timeout=10)
@@ -140,9 +141,9 @@ class LeetCodeClient:
             if item.get("status") == "ac":
                 stats["solved"]["All"] += 1
                 stats["solved"][difficulty] += 1
-        
+
         return stats
-    
+
     def account_profile(self) -> dict | None:
         status = self.user_status()
         if not status or not status.get("isSignedIn"):
@@ -180,12 +181,12 @@ class LeetCodeClient:
 
     def problem_detail(self, title_slug: str) -> dict | None:
         payload = {
-        "operationName": "questionData",
-        "query": QUESTION_DETAIL_QUERY,
-        "variables": {
-            "titleSlug": title_slug,
-        },
-    }
+            "operationName": "questionData",
+            "query": QUESTION_DETAIL_QUERY,
+            "variables": {
+                "titleSlug": title_slug,
+            },
+        }
         try:
             response = self.client.post("/graphql/", json=payload, timeout=10)
             response.raise_for_status()
@@ -194,13 +195,50 @@ class LeetCodeClient:
             return None
         return result.get("data", {}).get("question")
 
+    def submit_solution(
+        self, title_slug: str, question_id: str, code: str
+    ) -> int | None:
+        payload = {
+            "lang": "python3",
+            "question_id": question_id,
+            "typed_code": code,
+        }
+        csrftoken = self.client.cookies.get("csrftoken")
+        if not csrftoken:
+            return None
+        try:
+            response = self.client.post(
+                f"/problems/{title_slug}/submit/",
+                json=payload,
+                headers={
+                    "X-CSRFToken": csrftoken,
+                    "Referer": f"{BASE_URL}/problems/{title_slug}/",
+                },
+                timeout=10,
+            )
+            response.raise_for_status()
+            result = response.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        submission_id = result.get("submission_id")
+        return submission_id if isinstance(submission_id, int) else None
+
+    def get_submission_result(self, submission_id: int) -> dict | None:
+        try:
+            response = self.client.get(
+                f"/submissions/detail/{submission_id}/check/", timeout=10
+            )
+            response.raise_for_status()
+            result = response.json()
+        except (httpx.HTTPError, ValueError):
+            return None
+        return result
+
     def close(self) -> None:
         self.client.close()
-    
+
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
-if __name__ == '__main__':
-    pass

@@ -1,3 +1,5 @@
+from time import sleep
+
 from typer import Exit
 
 from aether_lc.auth import load_session
@@ -11,6 +13,10 @@ from aether_lc.problem import (
     parse_question_id,
 )
 from aether_lc.ui import error, loading, warning
+from aether_lc.workspace import WorkspaceError, parse_solution_submission
+
+
+MAX_ATTEMPTS = 10
 
 
 def _load_cookies_from_session() -> dict[str, str]:
@@ -100,3 +106,29 @@ def get_problem_detail_by_question_id(question_id: str) -> ProblemDetail:
             raise Exit(1)
         problem_detail = normalize_problem_detail(problem_detail_data)
     return problem_detail
+
+
+def submit_current_solution() -> dict | None:
+    try:
+        metadata, code = parse_solution_submission()
+        problem_id, title_slug = metadata.problem_id, metadata.title_slug
+    except WorkspaceError as exc:
+        error(str(exc))
+        raise Exit(1)
+    cookies = _load_cookies_from_session()
+    with LeetCodeClient(cookies) as client:
+        submission_id = client.submit_solution(title_slug, problem_id, code)
+        if not submission_id:
+            error("提交失败，请检查登录状态或网络")
+            raise Exit(1)
+
+        for _ in range(MAX_ATTEMPTS):
+            result = client.get_submission_result(submission_id)
+            if result is None:
+                error("获取判题结果失败")
+                raise Exit(1)
+            state = result.get("state")
+            if state not in {"PENDING", "STARTED"}:
+                return result
+            sleep(0.5)
+    return None

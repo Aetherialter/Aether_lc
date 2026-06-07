@@ -81,8 +81,14 @@ def render_profile(profile: dict[str, Any]) -> None:
     table.add_row("Username", str(profile.get("username") or "-"))
     table.add_row("Real Name", str(profile.get("real_name") or "-"))
     table.add_row("Premium", "Yes" if profile.get("is_premium") else "No")
-    table.add_row("Solved", f"All {solved['All']} | Easy {solved['Easy']} | Medium {solved['Medium']} | Hard {solved['Hard']}")
-    table.add_row("Total", f"All {total['All']} | Easy {total['Easy']} | Medium {total['Medium']} | Hard {total['Hard']}")
+    table.add_row(
+        "Solved",
+        f"All {solved['All']} | Easy {solved['Easy']} | Medium {solved['Medium']} | Hard {solved['Hard']}",
+    )
+    table.add_row(
+        "Total",
+        f"All {total['All']} | Easy {total['Easy']} | Medium {total['Medium']} | Hard {total['Hard']}",
+    )
 
     console.print(Panel(table, border_style="green", width=_terminal_width()))
 
@@ -113,7 +119,9 @@ def render_problem_list(problems: list[Any]) -> None:
     for problem in problems:
         difficulty = problem.difficulty or "-"
         difficulty_style = difficulty_styles.get(difficulty, "white")
-        paid_text = "[yellow]Paid[/yellow]" if problem.paid_only else "[green]Free[/green]"
+        paid_text = (
+            "[yellow]Paid[/yellow]" if problem.paid_only else "[green]Free[/green]"
+        )
         tags = ", ".join(problem.tags[:4])
         if len(problem.tags) > 4:
             tags = f"{tags}, ..."
@@ -141,10 +149,61 @@ def render_problem_detail(problem: Any) -> None:
     meta.add_row("Tags", tags)
 
     title = f"{problem.question_id}. {problem.title}"
-    console.print(Panel(meta, title=title, border_style="cyan", width=_terminal_width()))
+    console.print(
+        Panel(meta, title=title, border_style="cyan", width=_terminal_width())
+    )
 
     content_text = _html_to_text(problem.content_html)
-    console.print(Panel(content_text or "-", title="题面", border_style="white", width=_terminal_width()))
+    console.print(
+        Panel(
+            content_text or "-",
+            title="题面",
+            border_style="white",
+            width=_terminal_width(),
+        )
+    )
 
     if not problem.python_code:
         warning("未找到 Python3 代码模板")
+
+
+def render_submission_target(metadata: Any) -> None:
+    console.print(
+        f"[bold cyan]当前提交目标：{metadata.problem_id}. {metadata.title}[/bold cyan]"
+    )
+
+
+def render_submission_result(result: dict[str, Any] | None) -> None:
+    if result is None:
+        error("判题超时，请稍后到 LeetCode 查看结果")
+        return
+
+    status_msg = str(result.get("status_msg") or "-")
+    runtime = str(result.get("status_runtime") or result.get("runtime") or "-")
+    memory = str(result.get("memory") or "-")
+    total_correct = result.get("total_correct")
+    total_testcases = result.get("total_testcases")
+
+    if status_msg == "Accepted":
+        success("通过")
+    else:
+        error(f"提交失败：{status_msg}")
+
+    table = Table(
+        title="判题结果", border_style="green" if status_msg == "Accepted" else "red"
+    )
+    table.add_column("Item", style="cyan", no_wrap=True)
+    table.add_column("Value", style="white")
+    table.add_row("Status", status_msg)
+    table.add_row("Runtime", runtime)
+    table.add_row("Memory", memory)
+    if total_correct is not None and total_testcases is not None:
+        table.add_row("Cases", f"{total_correct} / {total_testcases}")
+
+    console.print(
+        Panel(
+            table,
+            border_style="green" if status_msg == "Accepted" else "red",
+            width=_terminal_width(),
+        )
+    )

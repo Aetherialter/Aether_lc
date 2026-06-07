@@ -2,9 +2,9 @@
 
 Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 
-当前版本是 `v0.4.0`。这个版本在 `v0.3.0` 的在线解题模板基础上，新增了单文件本地测试工作流：`lc solve` 生成带 `run_cases()` 的 `solution.py`，`lc test` 运行该文件中的本地断言。
+当前版本是 `v0.5.0`。这个版本在 `v0.4.0` 的单文件本地测试工作流基础上，新增了 `lc submit` 远程提交与判题结果轮询。
 
-## v0.4.0 功能
+## v0.5.0 功能
 
 - 复用本机浏览器中的 `leetcode.cn` 登录态。
 - 浏览器 Cookie 自动读取失败时，支持手动粘贴 Cookie。
@@ -14,8 +14,9 @@ Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 - 支持按题号在线获取 LeetCode 中文站题目详情。
 - 支持分页展示题目索引列表。
 - 支持 `lc solve <题号>` 在线拉取题目、展示题面、覆盖写入根目录 `solution.py` 并打开。
-- 生成 `solution.py` 时会自动加入常用 Python 刷题标准库导入和 `run_cases()` 本地测试入口。
+- 生成 `solution.py` 时会自动加入题目元信息、常用 Python 刷题标准库导入、提交区域标记和 `run_cases()` 本地测试入口。
 - 支持 `lc test` 运行根目录 `solution.py`，根据退出码展示本地测试通过或失败。
+- 支持 `lc submit` 从根目录 `solution.py` 提取提交区域代码，提交到 LeetCode 中文站并轮询判题结果。
 - 使用独立的 `service.py` 管理应用层取题流程，复用 `get` 与 `solve` 的核心逻辑。
 - 使用独立的 `workspace.py` 管理 `solution.py` 生成与打开逻辑。
 - 使用独立的 `ui.py` 管理终端输出，避免 CLI 逻辑和展示逻辑混在一起。
@@ -111,6 +112,21 @@ solution.py
 
 `solution.py` 是当前题目的通用解题模板文件。`lc solve` 会强制覆盖该文件，请在切换题目前自行保存当前解法。
 
+生成后的 `solution.py` 会包含题目元信息和提交区域标记：
+
+```python
+# @lc problem_id: 1
+# @lc title: Two Sum
+# @lc title_slug: two-sum
+
+# @lc submit_begin
+class Solution:
+    ...
+# @lc submit_end
+```
+
+`lc submit` 只会提交 `# @lc submit_begin` 和 `# @lc submit_end` 之间的代码。你可以在该区域内保留 LeetCode 允许的 `import`、全局常量、helper 函数和 `class Solution`。
+
 ### 运行本地测试
 
 ```powershell
@@ -124,6 +140,22 @@ assert solution.twoSum([2, 7, 11, 15], 9) == [0, 1]
 ```
 
 默认只显示本地测试通过或失败，不展示 Python traceback。
+
+`lc test` 只验证本地 `run_cases()`，本地测试通过不代表远程 LeetCode 一定通过。
+
+### 远程提交
+
+```powershell
+uv run lc submit
+```
+
+`lc submit` 会从当前根目录 `solution.py` 读取题目元信息和提交区域代码，提交到 LeetCode 中文站，并轮询展示判题结果。
+
+当前提交目标来自 `solution.py` 顶部元信息，因此执行远程提交前请先使用：
+
+```powershell
+uv run lc solve <题号>
+```
 
 ### 展示题目列表
 
@@ -151,12 +183,18 @@ uv run lc show --limit 20 --skip 0
 
 ## 当前限制
 
-- `v0.4.0` 暂不保存题目详情到本地数据库。
-- `v0.4.0` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
-- `v0.4.0` 暂不自动解析题面样例，`run_cases()` 中的断言需要手动添加。
-- `v0.4.0` 暂不支持远程提交。
+- `v0.5.0` 暂不保存题目详情到本地数据库。
+- `v0.5.0` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
+- `v0.5.0` 暂不自动解析题面样例，`run_cases()` 中的断言需要手动添加。
+- `v0.5.0` 远程提交仅支持 Python3。
 - `lc solve` 会覆盖根目录 `solution.py`。
-- `lc test` 默认隐藏 Python traceback，只展示本地测试结果。
+- `lc test` 默认隐藏 Python traceback，只展示本地测试结果；若 `run_cases()` 中没有断言，命令仍会显示本地测试通过，这是当前版本允许的轻量化设计。
+- `lc submit` 依赖 `solution.py` 顶部题目元信息和提交区域标记；如果手动删除这些内容，需要重新执行 `lc solve <题号>`。
+- `solution.py` 中的自动导入可能在编辑器中产生未使用导入提示，这是为了保证本地解题时常用库可直接使用。
+- 当前版本仅自动读取 Chrome 的 LeetCode 中文站 Cookie，其他浏览器支持会在后续版本完善。
+- 当前版本限定 Windows 环境，跨平台打开 `solution.py` 会在后续版本完善。
+- 当前版本为了保持轻量，每次按题号获取详情时会在线拉取题目索引；后续缓存版本会优化重复请求。
+- 当前版本对网络请求失败只展示简化错误信息；后续诊断版本会补充更细的错误原因。
 - `lc profile` 的刷题统计来自 LeetCode 中文站题库状态接口，因此可能需要等待几秒。
 - `lc get`、`lc show` 和 `lc solve` 依赖 LeetCode 中文站接口和网络状态。
 
@@ -165,7 +203,9 @@ uv run lc show --limit 20 --skip 0
 运行代码检查：
 
 ```powershell
-uv run ruff check .
+uv run ruff format src tests
+uv run ruff check src pyproject.toml
+uv run pytest
 ```
 
 验证当前 CLI 功能：
@@ -177,9 +217,12 @@ uv run lc get 1
 uv run lc show
 uv run lc solve 1
 uv run lc test
+uv run lc submit
 ```
 
-项目已经安装 `pytest`，但 `v0.4.0` 暂时还没有有意义的自动化测试。
+当前版本提供了最小自动化测试，重点覆盖 `solution.py` 生成、题目元信息解析和提交区域 marker 校验。
+
+发布前需要确认根目录 `solution.py` 为空，避免把个人题解提交到公开仓库。
 
 ## 版本路线
 
@@ -202,8 +245,16 @@ src/aether_lc/
   service.py   应用层流程，复用登录态、题目索引和题目详情获取逻辑
   ui.py        基于 Rich 的终端输出
   workspace.py solution.py 生成、打开与本地运行逻辑
+tests/
+  test_workspace.py  solution.py 生成与解析的最小自动化测试
 ```
 
 ## 项目定位
 
-这个项目目前是个人学习与简历项目。当前阶段重点不是堆功能，而是通过小版本逐步练习 Python 工程结构、CLI 设计、HTTP 客户端封装、GitHub 提交与 Release 流程。
+这个项目目前是轻量 GitHub CLI 工具。当前阶段重点不是堆功能，而是通过小版本逐步练习 Python 工程结构、CLI 设计、HTTP 客户端封装、GitHub 提交与 Release 流程。更完整的简历项目版能力，例如后端、数据库、前端和 AI/Agent 工作流，应作为独立产品线规划。
+
+## License
+
+本项目使用 [MIT License](LICENSE) 开源，允许个人或商业场景使用、修改、分发和闭源二次开发，但需要保留原始版权和许可证声明。
+
+第三方依赖遵循各自许可证。当前主要依赖中没有发现 GPL 或 AGPL 依赖；需要额外关注的是 `browser-cookie3` 标注为 LGPL，`certifi` 标注为 MPL-2.0，其余核心依赖主要为 MIT、BSD、Apache-2.0、ISC 或 PSF 等宽松许可证。

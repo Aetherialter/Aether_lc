@@ -7,9 +7,18 @@ wheels/
 *.egg-info
 .pytest_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 
 # Virtual environments
 .venv/
 
 # Local secrets and runtime state
 .aether_lc/
+
+# Local environment files
+.env
+.env.*
+
+# Local logs
+*.log

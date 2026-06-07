@@ -7,6 +7,7 @@ from aether_lc.auth import (
 from aether_lc.client import LeetCodeClient
 from aether_lc.ui import (
     loading,
+    render_submission_result,
     success,
     warning,
     error,
@@ -19,8 +20,9 @@ from aether_lc.service import (
     get_problem_detail_by_question_id,
     get_problem_summaries,
     get_user_status,
+    submit_current_solution,
 )
-from aether_lc.workspace import run_solution_file, write_solution_file
+from aether_lc.workspace import ProblemMetadata, run_solution_file, write_solution_file
 
 app = Typer(help="aether_lc 适用于中文站leetcode的刷题本地化cli程序")
 
@@ -86,7 +88,21 @@ def solve(question_id: str) -> None:
     if not problem_detail.python_code:
         error("未找到 Python3 代码模板")
         raise Exit(1)
-    write_solution_file(problem_detail.python_code)
+    if (
+        not problem_detail.question_id
+        or not problem_detail.title
+        or not problem_detail.title_slug
+    ):
+        error("题目元信息不完整，无法生成可提交的 solution.py")
+        raise Exit(1)
+    write_solution_file(
+        problem_detail.python_code,
+        ProblemMetadata(
+            problem_id=problem_detail.question_id,
+            title=problem_detail.title,
+            title_slug=problem_detail.title_slug,
+        ),
+    )
 
 
 @app.command()
@@ -96,6 +112,12 @@ def test() -> None:
         error("本地测试失败")
         raise Exit(result.returncode)
     success("本地测试通过")
+
+
+@app.command()
+def submit() -> None:
+    result = submit_current_solution()
+    render_submission_result(result)
 
 
 if __name__ == "__main__":
