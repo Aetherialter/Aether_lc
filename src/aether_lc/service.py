@@ -40,15 +40,26 @@ def _parse_question_id_or_exit(question_id: str) -> str:
     return parse_result.question_id
 
 
-def _find_problem_summary_by_question_id(
-    problems: list[ProblemSummary],
+def _find_problem_summary_by_question_id_online(
+    client: LeetCodeClient,
     question_id: str,
 ) -> ProblemSummary:
-    problem_summary = find_problem_by_id(problems, question_id)
-    if not problem_summary:
-        error(f"未找到题号 {question_id}")
-        raise Exit(1)
-    return problem_summary
+    limit, skip = 100, 0
+    while True:
+        problem_list_data = client.problem_list(limit=limit, skip=skip)
+        if not problem_list_data:
+            error("获取题目索引失败")
+            raise Exit(1)
+        questions = problem_list_data.get("questions", [])
+        problem_summaries = normalize_problem_summaries(questions)
+        problem_summary = find_problem_by_id(problem_summaries, question_id)
+        if problem_summary:
+            return problem_summary
+        skip += limit
+        total = problem_list_data.get("total") or 0
+        if not questions or skip >= total:
+            error(f"未找到题号 {question_id}")
+            raise Exit(1)
 
 
 def get_user_status() -> dict:
@@ -89,16 +100,10 @@ def get_problem_detail_by_question_id(question_id: str) -> ProblemDetail:
     cookies = _load_cookies_from_session()
     with LeetCodeClient(cookies) as client:
         with loading("正在获取题目索引..."):
-            problem_list_data = client.problem_list(limit=5000)
-        if not problem_list_data:
-            error("获取题目索引失败")
-            raise Exit(1)
-        questions = problem_list_data.get("questions", [])
-        problem_summaries = normalize_problem_summaries(questions)
-        problem_summary = _find_problem_summary_by_question_id(
-            problem_summaries,
-            normalized_question_id,
-        )
+            problem_summary = _find_problem_summary_by_question_id_online(
+                client,
+                normalized_question_id,
+            )
         with loading("正在获取题目详情..."):
             problem_detail_data = client.problem_detail(problem_summary.title_slug)
         if not problem_detail_data:
