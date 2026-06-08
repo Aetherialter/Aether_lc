@@ -7,6 +7,7 @@ from aether_lc.workspace import ProblemMetadata, WorkspaceError
 def test_build_solution_content_writes_metadata_and_submit_markers() -> None:
     metadata = ProblemMetadata(
         problem_id="1",
+        submit_question_id="1",
         title="Two Sum",
         title_slug="two-sum",
     )
@@ -17,6 +18,7 @@ def test_build_solution_content_writes_metadata_and_submit_markers() -> None:
     )
 
     assert "# @lc problem_id: 1" in content
+    assert "# @lc submit_question_id: 1" in content
     assert "# @lc title: Two Sum" in content
     assert "# @lc title_slug: two-sum" in content
     assert "# @lc submit_begin" in content
@@ -33,6 +35,7 @@ def test_parse_solution_submission_reads_metadata_and_submit_code(
         "\n".join(
             [
                 "# @lc problem_id: 1",
+                "# @lc submit_question_id: 1",
                 "# @lc title: Two Sum",
                 "# @lc title_slug: two-sum",
                 "",
@@ -53,6 +56,7 @@ def test_parse_solution_submission_reads_metadata_and_submit_code(
 
     assert metadata == ProblemMetadata(
         problem_id="1",
+        submit_question_id="1",
         title="Two Sum",
         title_slug="two-sum",
     )
@@ -68,6 +72,7 @@ def test_parse_solution_submission_rejects_missing_marker(
         "\n".join(
             [
                 "# @lc problem_id: 1",
+                "# @lc submit_question_id: 1",
                 "# @lc title: Two Sum",
                 "# @lc title_slug: two-sum",
                 "class Solution:",
@@ -79,4 +84,30 @@ def test_parse_solution_submission_rejects_missing_marker(
     monkeypatch.setattr(workspace, "SOLUTION_FILE", solution_file)
 
     with pytest.raises(WorkspaceError, match="提交区域标记不完整"):
+        workspace.parse_solution_submission()
+
+
+def test_parse_solution_submission_rejects_missing_submit_question_id(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    solution_file = tmp_path / "solution.py"
+    solution_file.write_text(
+        "\n".join(
+            [
+                "# @lc problem_id: 2161",
+                "# @lc title: 根据给定数字划分数组",
+                "# @lc title_slug: partition-array-according-to-given-pivot",
+                "",
+                "# @lc submit_begin",
+                "class Solution:",
+                "    pass",
+                "# @lc submit_end",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(workspace, "SOLUTION_FILE", solution_file)
+
+    with pytest.raises(WorkspaceError, match="缺少元数据"):
         workspace.parse_solution_submission()

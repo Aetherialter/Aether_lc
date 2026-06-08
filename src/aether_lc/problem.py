@@ -45,6 +45,7 @@ class ProblemSummary:
 @dataclass(frozen=True)
 class ProblemDetail:
     question_id: str
+    submit_question_id: str
     title: str
     title_slug: str
     difficulty: str
@@ -119,6 +120,7 @@ def normalize_problem_detail(raw: dict[str, Any]) -> ProblemDetail:
 
     return ProblemDetail(
         question_id=raw.get("questionFrontendId", ""),
+        submit_question_id=raw.get("questionId", ""),
         title=raw.get("translatedTitle") or raw.get("title", ""),
         title_slug=raw.get("titleSlug", ""),
         difficulty=raw.get("difficulty", ""),

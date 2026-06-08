@@ -116,13 +116,16 @@ def get_problem_detail_by_question_id(question_id: str) -> ProblemDetail:
 def submit_current_solution() -> dict | None:
     try:
         metadata, code = parse_solution_submission()
-        problem_id, title_slug = metadata.problem_id, metadata.title_slug
+        submit_question_id, title_slug = (
+            metadata.submit_question_id,
+            metadata.title_slug,
+        )
     except WorkspaceError as exc:
         error(str(exc))
         raise Exit(1)
     cookies = _load_cookies_from_session()
     with LeetCodeClient(cookies) as client:
-        submission_id = client.submit_solution(title_slug, problem_id, code)
+        submission_id = client.submit_solution(title_slug, submit_question_id, code)
         if not submission_id:
             error("提交失败，请检查登录状态或网络")
             raise Exit(1)

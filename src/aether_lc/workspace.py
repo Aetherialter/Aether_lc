@@ -34,6 +34,7 @@ if __name__ == "__main__":
 @dataclass(frozen=True)
 class ProblemMetadata:
     problem_id: str
+    submit_question_id: str
     title: str
     title_slug: str
 
@@ -45,6 +46,7 @@ class WorkspaceError(ValueError):
 def build_solution_content(python_code: str, metadata: ProblemMetadata) -> str:
     metadata_content = (
         f"{METADATA_PREFIX}problem_id: {metadata.problem_id}\n"
+        f"{METADATA_PREFIX}submit_question_id: {metadata.submit_question_id}\n"
         f"{METADATA_PREFIX}title: {metadata.title}\n"
         f"{METADATA_PREFIX}title_slug: {metadata.title_slug}\n\n"
     )
@@ -101,13 +103,21 @@ def parse_solution_submission() -> tuple[ProblemMetadata, str]:
         raise WorkspaceError("solution.py 提交区域为空")
 
     if not all(
-        [metadata.get("problem_id"), metadata.get("title"), metadata.get("title_slug")]
+        [
+            metadata.get("problem_id"),
+            metadata.get("submit_question_id"),
+            metadata.get("title"),
+            metadata.get("title_slug"),
+        ]
     ):
-        raise WorkspaceError("solution.py 缺少元数据(problem_id, title, title_slug)")
+        raise WorkspaceError(
+            "solution.py 缺少元数据(problem_id, submit_question_id, title, title_slug)"
+        )
 
     return (
         ProblemMetadata(
             problem_id=metadata["problem_id"],
+            submit_question_id=metadata["submit_question_id"],
             title=metadata["title"],
             title_slug=metadata["title_slug"],
         ),

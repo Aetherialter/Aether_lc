@@ -59,6 +59,7 @@ query problemsetQuestionList(
 QUESTION_DETAIL_QUERY = """
 query questionData($titleSlug: String!) {
     question(titleSlug: $titleSlug) {
+        questionId
         questionFrontendId
         title
         translatedTitle

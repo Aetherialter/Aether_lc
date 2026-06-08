@@ -90,6 +90,7 @@ def solve(question_id: str) -> None:
         raise Exit(1)
     if (
         not problem_detail.question_id
+        or not problem_detail.submit_question_id
         or not problem_detail.title
         or not problem_detail.title_slug
     ):
@@ -99,6 +100,7 @@ def solve(question_id: str) -> None:
         problem_detail.python_code,
         ProblemMetadata(
             problem_id=problem_detail.question_id,
+            submit_question_id=problem_detail.submit_question_id,
             title=problem_detail.title,
             title_slug=problem_detail.title_slug,
         ),

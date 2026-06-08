@@ -2,9 +2,9 @@
 
 Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 
-当前版本是 `v0.5.1`。这个版本修复了按题号获取高题号题目时只能搜索前 100 题的问题。
+当前版本是 `v0.5.2`。这个版本修复了按题号获取高题号题目时只能搜索前 100 题的问题，并修复远程提交时展示题号和 LeetCode 内部提交 ID 混用的问题。
 
-## v0.5.1 功能
+## v0.5.2 功能
 
 - 复用本机浏览器中的 `leetcode.cn` 登录态。
 - 浏览器 Cookie 自动读取失败时，支持手动粘贴 Cookie。
@@ -18,6 +18,7 @@ Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 - 生成 `solution.py` 时会自动加入题目元信息、常用 Python 刷题标准库导入、提交区域标记和 `run_cases()` 本地测试入口。
 - 支持 `lc test` 运行根目录 `solution.py`，根据退出码展示本地测试通过或失败。
 - 支持 `lc submit` 从根目录 `solution.py` 提取提交区域代码，提交到 LeetCode 中文站并轮询判题结果。
+- `lc submit` 使用 `lc solve` 写入的 LeetCode 内部提交 ID，避免展示题号与提交目标不一致。
 - 使用独立的 `service.py` 管理应用层取题流程，复用 `get` 与 `solve` 的核心逻辑。
 - 使用独立的 `workspace.py` 管理 `solution.py` 生成与打开逻辑。
 - 使用独立的 `ui.py` 管理终端输出，避免 CLI 逻辑和展示逻辑混在一起。
@@ -117,6 +118,7 @@ solution.py
 
 ```python
 # @lc problem_id: 1
+# @lc submit_question_id: 1
 # @lc title: Two Sum
 # @lc title_slug: two-sum
 
@@ -152,7 +154,7 @@ uv run lc submit
 
 `lc submit` 会从当前根目录 `solution.py` 读取题目元信息和提交区域代码，提交到 LeetCode 中文站，并轮询展示判题结果。
 
-当前提交目标来自 `solution.py` 顶部元信息，因此执行远程提交前请先使用：
+当前提交目标来自 `solution.py` 顶部元信息，其中 `problem_id` 是展示题号，`submit_question_id` 是 LeetCode 内部提交 ID。因此执行远程提交前请先使用：
 
 ```powershell
 uv run lc solve <题号>
@@ -184,10 +186,10 @@ uv run lc show --limit 20 --skip 0
 
 ## 当前限制
 
-- `v0.5.1` 暂不保存题目详情到本地数据库。
-- `v0.5.1` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
-- `v0.5.1` 暂不自动解析题面样例，`run_cases()` 中的断言需要手动添加。
-- `v0.5.1` 远程提交仅支持 Python3。
+- `v0.5.2` 暂不保存题目详情到本地数据库。
+- `v0.5.2` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
+- `v0.5.2` 暂不自动解析题面样例，`run_cases()` 中的断言需要手动添加。
+- `v0.5.2` 远程提交仅支持 Python3。
 - `lc solve` 会覆盖根目录 `solution.py`。
 - `lc test` 默认隐藏 Python traceback，只展示本地测试结果；若 `run_cases()` 中没有断言，命令仍会显示本地测试通过，这是当前版本允许的轻量化设计。
 - `lc submit` 依赖 `solution.py` 顶部题目元信息和提交区域标记；如果手动删除这些内容，需要重新执行 `lc solve <题号>`。
@@ -233,6 +235,7 @@ uv run lc submit
 - `v0.4`: 单文件本地测试工作流，执行 `solution.py` 中的 `run_cases()`。
 - `v0.5`: 远程提交与判题结果轮询。
 - `v0.5.1`: 修复按题号查询高题号时只能搜索前 100 题的问题。
+- `v0.5.2`: 修复远程提交使用展示题号导致提交目标不一致的问题。
 - `v0.6`: 稳定性、诊断命令、文档和 GitHub Actions。
 - `v1.0`: 完整的 LeetCode 中文站本地刷题 CLI 工作流。
 
@@ -248,6 +251,7 @@ src/aether_lc/
   ui.py        基于 Rich 的终端输出
   workspace.py solution.py 生成、打开与本地运行逻辑
 tests/
+  test_problem.py    题目详情标准化与提交 ID 解析测试
   test_workspace.py  solution.py 生成与解析的最小自动化测试
 ```
 
