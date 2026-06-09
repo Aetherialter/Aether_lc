@@ -24,7 +24,7 @@ from aether_lc.service import (
 )
 from aether_lc.workspace import ProblemMetadata, run_solution_file, write_solution_file
 
-app = Typer(help="aether_lc 适用于中文站leetcode的刷题本地化cli程序")
+app = Typer(help="力扣中文站本地化刷题 CLI 工具")
 
 
 @app.command()

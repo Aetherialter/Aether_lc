@@ -1,6 +1,6 @@
-# Aether_lc
+# 力扣中文站本地化刷题 CLI 工具
 
-Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
+力扣中文站本地化刷题 CLI 工具是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 
 当前版本是 `v0.5.3`。这个版本改善了 `solution.py` 的编辑体验，减少 VSCode/Pylance 和 Ruff 对常用导入、空模板方法体的干扰。
 
@@ -38,8 +38,8 @@ Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 克隆仓库后，使用 `uv` 安装依赖：
 
 ```powershell
-git clone <your-repository-url>
-cd Aether_lc
+git clone https://github.com/Aetherialter/leetcode-cn-local-cli.git
+Set-Location leetcode-cn-local-cli
 uv sync
 ```
 
@@ -264,7 +264,9 @@ tests/
 
 ## 项目定位
 
-这个项目目前是轻量 GitHub CLI 工具。当前阶段重点不是堆功能，而是通过小版本逐步练习 Python 工程结构、CLI 设计、HTTP 客户端封装、GitHub 提交与 Release 流程。更完整的简历项目版能力，例如后端、数据库、前端和 AI/Agent 工作流，应作为独立产品线规划。
+这个项目目前是轻量 GitHub CLI 工具，仓库名为 `leetcode-cn-local-cli`。当前阶段重点不是堆功能，而是通过小版本逐步练习 Python 工程结构、CLI 设计、HTTP 客户端封装、GitHub 提交与 Release 流程。更完整的简历项目版能力，例如后端、数据库、前端和 AI/Agent 工作流，应作为独立产品线规划。
+
+工程内部仍保留 `aether-lc` 作为 Python 分发包名、`aether_lc` 作为源码包名、`lc` 作为命令名，避免改名影响安装、导入、命令入口和本地 `.aether_lc` session 数据。
 
 ## License
 
