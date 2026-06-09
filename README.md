@@ -2,9 +2,9 @@
 
 Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 
-当前版本是 `v0.5.2`。这个版本修复了按题号获取高题号题目时只能搜索前 100 题的问题，并修复远程提交时展示题号和 LeetCode 内部提交 ID 混用的问题。
+当前版本是 `v0.5.3`。这个版本改善了 `solution.py` 的编辑体验，减少 VSCode/Pylance 和 Ruff 对常用导入、空模板方法体的干扰。
 
-## v0.5.2 功能
+## v0.5.3 功能
 
 - 复用本机浏览器中的 `leetcode.cn` 登录态。
 - 浏览器 Cookie 自动读取失败时，支持手动粘贴 Cookie。
@@ -16,6 +16,9 @@ Aether_lc 是一个面向 LeetCode 中文站的本地刷题 CLI 工具。
 - 支持分页展示题目索引列表。
 - 支持 `lc solve <题号>` 在线拉取题目、展示题面、覆盖写入根目录 `solution.py` 并打开。
 - 生成 `solution.py` 时会自动加入题目元信息、常用 Python 刷题标准库导入、提交区域标记和 `run_cases()` 本地测试入口。
+- 生成 `solution.py` 时会加入 Pyright/Ruff 文件级配置，降低刷题工作区的未使用导入和未使用变量提示。
+- 生成 `solution.py` 时使用显式 `typing` 导入，避免 `from typing import *` 带来的静态分析告警。
+- 生成 `solution.py` 时会为 LeetCode 返回的空 Python 方法模板追加轻量 `pass` 占位，避免刚生成后本地运行失败。
 - 支持 `lc test` 运行根目录 `solution.py`，根据退出码展示本地测试通过或失败。
 - 支持 `lc submit` 从根目录 `solution.py` 提取提交区域代码，提交到 LeetCode 中文站并轮询判题结果。
 - `lc submit` 使用 `lc solve` 写入的 LeetCode 内部提交 ID，避免展示题号与提交目标不一致。
@@ -117,6 +120,8 @@ solution.py
 生成后的 `solution.py` 会包含题目元信息和提交区域标记：
 
 ```python
+# pyright: reportUnusedImport=false, reportUnusedVariable=false
+# ruff: noqa: F401, F841
 # @lc problem_id: 1
 # @lc submit_question_id: 1
 # @lc title: Two Sum
@@ -124,7 +129,7 @@ solution.py
 
 # @lc submit_begin
 class Solution:
-    ...
+    def twoSum(self, nums: List[int], target: int) -> List[int]: pass
 # @lc submit_end
 ```
 
@@ -186,14 +191,15 @@ uv run lc show --limit 20 --skip 0
 
 ## 当前限制
 
-- `v0.5.2` 暂不保存题目详情到本地数据库。
-- `v0.5.2` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
-- `v0.5.2` 暂不自动解析题面样例，`run_cases()` 中的断言需要手动添加。
-- `v0.5.2` 远程提交仅支持 Python3。
+- `v0.5.3` 暂不保存题目详情到本地数据库。
+- `v0.5.3` 只维护根目录单个 `solution.py`，不会生成本地题目目录。
+- `v0.5.3` 暂不自动解析题面样例，`run_cases()` 中的断言需要手动添加。
+- `v0.5.3` 远程提交仅支持 Python3。
 - `lc solve` 会覆盖根目录 `solution.py`。
 - `lc test` 默认隐藏 Python traceback，只展示本地测试结果；若 `run_cases()` 中没有断言，命令仍会显示本地测试通过，这是当前版本允许的轻量化设计。
 - `lc submit` 依赖 `solution.py` 顶部题目元信息和提交区域标记；如果手动删除这些内容，需要重新执行 `lc solve <题号>`。
-- `solution.py` 中的自动导入可能在编辑器中产生未使用导入提示，这是为了保证本地解题时常用库可直接使用。
+- `solution.py` 中的自动导入是刷题工作区便利设计，当前版本会通过文件级 Pyright/Ruff 配置降低未使用导入提示。
+- 当前版本使用轻量方式为 LeetCode 空 Python 方法模板追加 `pass` 占位，后续版本会继续优化模板规范化策略。
 - 当前版本仅自动读取 Chrome 的 LeetCode 中文站 Cookie，其他浏览器支持会在后续版本完善。
 - 当前版本限定 Windows 环境，跨平台打开 `solution.py` 会在后续版本完善。
 - 当前版本为了保持轻量，每次按题号获取详情时会在线拉取题目索引；后续缓存版本会优化重复请求。
@@ -236,6 +242,7 @@ uv run lc submit
 - `v0.5`: 远程提交与判题结果轮询。
 - `v0.5.1`: 修复按题号查询高题号时只能搜索前 100 题的问题。
 - `v0.5.2`: 修复远程提交使用展示题号导致提交目标不一致的问题。
+- `v0.5.3`: 改善 `solution.py` 编辑体验，减少静态分析告警并补充空模板占位。
 - `v0.6`: 稳定性、诊断命令、文档和 GitHub Actions。
 - `v1.0`: 完整的 LeetCode 中文站本地刷题 CLI 工作流。
 

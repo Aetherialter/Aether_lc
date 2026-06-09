@@ -6,11 +6,16 @@ import subprocess
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SOLUTION_FILE = PROJECT_ROOT / "solution.py"
+
 METADATA_PREFIX = "# @lc "
 START_FLAG = "# @lc submit_begin"
 END_FLAG = "# @lc submit_end"
 
-SOLUTION_IMPORTS = """from typing import *
+SOLUTION_FILE_HEADER = """# pyright: reportUnusedImport=false, reportUnusedVariable=false
+# ruff: noqa: F401, F841
+"""
+
+SOLUTION_IMPORTS = """from typing import Any, Dict, List, Optional, Set, Tuple
 from collections import Counter, defaultdict, deque
 from functools import cache, lru_cache
 from itertools import accumulate, combinations, permutations, product
@@ -18,6 +23,7 @@ from bisect import bisect_left, bisect_right, insort
 from heapq import heapify, heappop, heappush
 from math import gcd, inf, isqrt, lcm
 """
+
 SOLUTION_CASE = """
 def run_cases() -> None:
     solution = Solution()
@@ -51,10 +57,11 @@ def build_solution_content(python_code: str, metadata: ProblemMetadata) -> str:
         f"{METADATA_PREFIX}title_slug: {metadata.title_slug}\n\n"
     )
     return (
+        f"{SOLUTION_FILE_HEADER}"
         f"{metadata_content}"
         f"{SOLUTION_IMPORTS}\n\n"
         f"{START_FLAG}\n"
-        f"{python_code.rstrip()}\n"
+        f"{python_code.rstrip()} pass\n"
         f"{END_FLAG}\n\n"
         f"{SOLUTION_CASE}\n"
     )

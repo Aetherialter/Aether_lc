@@ -21,9 +21,30 @@ def test_build_solution_content_writes_metadata_and_submit_markers() -> None:
     assert "# @lc submit_question_id: 1" in content
     assert "# @lc title: Two Sum" in content
     assert "# @lc title_slug: two-sum" in content
+    assert "# pyright: reportUnusedImport=false, reportUnusedVariable=false" in content
+    assert "# ruff: noqa: F401, F841" in content
+    assert "from typing import Any, Dict, List, Optional, Set, Tuple" in content
     assert "# @lc submit_begin" in content
     assert "# @lc submit_end" in content
     assert "def run_cases() -> None:" in content
+
+
+def test_build_solution_content_adds_lightweight_pass_placeholder() -> None:
+    metadata = ProblemMetadata(
+        problem_id="1",
+        submit_question_id="1",
+        title="Two Sum",
+        title_slug="two-sum",
+    )
+
+    content = workspace.build_solution_content(
+        "class Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:",
+        metadata,
+    )
+
+    assert (
+        "def twoSum(self, nums: List[int], target: int) -> List[int]: pass" in content
+    )
 
 
 def test_parse_solution_submission_reads_metadata_and_submit_code(
