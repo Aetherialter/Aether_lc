@@ -2,7 +2,7 @@
 
 一个面向 LeetCode 中文站的轻量本地刷题 CLI。它复用浏览器登录态，在线获取题目，生成根目录单文件 `solution.py`，并支持本地测试和远程提交。
 
-当前版本：`v0.5.4`
+当前版本：`v0.5.5`
 
 ## 核心能力
 
@@ -14,7 +14,7 @@
 - `lc submit` 提交 marker 区域代码到 LeetCode 中文站，并轮询判题结果。
 - 生成模板时写入 `problem_id` 和 `submit_question_id`，避免展示题号和 LeetCode 内部提交 ID 混用。
 - 生成模板时加入 Pyright/Ruff 文件级配置，减少刷题工作区的未使用导入、未使用变量和 star import 相关提示。
-- 对 LeetCode GraphQL 返回 `data: null` 的情况做最小防御，避免 CLI 直接 traceback。
+- 使用统一的客户端错误结果类型区分网络、HTTP、JSON、接口结构和登录态错误。
 
 ## 环境要求
 
@@ -98,8 +98,7 @@ class Solution:
 - `lc test` 默认隐藏 Python traceback，只展示本地测试通过或失败。
 - 如果 `run_cases()` 中没有断言，`lc test` 显示通过是当前轻量化设计允许的行为。
 - 树、链表等题型中，LeetCode 模板里的 `TreeNode` / `ListNode` 定义默认保持注释状态；如需本地构造用例，请自行取消注释并编写测试数据。
-- 当前网络错误和接口异常仍使用简化提示；后续稳定性版本会补充更细诊断。
-- 当前版本已避免 GraphQL `data: null` 直接触发 traceback，但仍未区分网络异常、参数错误和接口异常的具体原因。
+- 当前网络错误、接口异常和登录态异常已做基础分类，但诊断信息仍保持轻量；后续稳定性版本会补充更细诊断。
 
 ## 安全说明
 
@@ -142,6 +141,7 @@ src/aether_lc/
   workspace.py  solution.py 生成、解析与运行
 tests/
   test_problem.py
+  test_service.py
   test_workspace.py
 ```
 
@@ -149,6 +149,7 @@ tests/
 
 - `v0.5.x`: 远程提交上线后的 bugfix patch 线。
 - `v0.5.4`: 修复 GraphQL `data: null` 导致 traceback，并精简 README。
+- `v0.5.5`: 引入客户端错误结果类型，收敛 service 层错误处理并补充边界测试。
 - `v0.6`: 稳定性与诊断完整修复版。
 - `v0.7`: 轻量缓存。
 - `v0.8`: 样例提取原型。

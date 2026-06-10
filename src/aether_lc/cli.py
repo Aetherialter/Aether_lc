@@ -40,8 +40,13 @@ def login() -> None:
         warning("未获取 cookies")
         raise Exit(1)
     with LeetCodeClient(cookies) as client:
-        status = client.user_status()
-        if status and status.get("isSignedIn"):
+        status_result = client.user_status()
+        status = status_result.data
+        if (
+            status_result.ok
+            and isinstance(status_result.data, dict)
+            and status_result.data.get("isSignedIn")
+        ):
             success("成功登录")
             save_session(
                 {

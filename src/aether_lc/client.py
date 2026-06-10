@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any
+
 import httpx
 
 BASE_URL = "https://leetcode.cn"
@@ -81,6 +85,26 @@ query questionData($titleSlug: String!) {
 """
 
 
+class ClientErrorKind(str, Enum):
+    NETWORK = "network"
+    HTTP = "http"
+    INVALID_JSON = "invalid_json"
+    INVALID_RESPONSE = "invalid_response"
+    UNAUTHORIZED = "unauthorized"
+    MISSING_CSRF = "missing_csrf"
+
+
+@dataclass(frozen=True)
+class ClientResult:
+    data: Any = None
+    error: ClientErrorKind | None = None
+    message: str = ""
+
+    @property
+    def ok(self) -> bool:
+        return self.error is None
+
+
 class LeetCodeClient:
     def __init__(self, cookies: dict[str, str] | None = None):
         self.client = httpx.Client(
@@ -97,25 +121,33 @@ class LeetCodeClient:
         if cookies:
             self.client.cookies.update(cookies)
 
-    def user_status(self) -> dict | None:
+    def user_status(self) -> ClientResult:
         try:
             response = self.client.post("/graphql/", json=USER_STATUS_QUERY, timeout=10)
             response.raise_for_status()
             result = response.json()
-        except (httpx.HTTPError, ValueError):
-            return None
+        except httpx.RequestError:
+            return ClientResult(error=ClientErrorKind.NETWORK)
+        except httpx.HTTPStatusError:
+            return ClientResult(error=ClientErrorKind.HTTP)
+        except ValueError:
+            return ClientResult(error=ClientErrorKind.INVALID_JSON)
         data = result.get("data", {})
         if not isinstance(data, dict):
-            return None
-        return data.get("userStatus")
+            return ClientResult(error=ClientErrorKind.INVALID_RESPONSE)
+        return ClientResult(data=data.get("userStatus"))
 
-    def problem_stats(self) -> dict | None:
+    def problem_stats(self) -> ClientResult:
         try:
             response = self.client.get("/api/problems/all/", timeout=20)
             response.raise_for_status()
             result = response.json()
-        except (httpx.HTTPError, ValueError):
-            return None
+        except httpx.RequestError:
+            return ClientResult(error=ClientErrorKind.NETWORK)
+        except httpx.HTTPStatusError:
+            return ClientResult(error=ClientErrorKind.HTTP)
+        except ValueError:
+            return ClientResult(error=ClientErrorKind.INVALID_JSON)
 
         stats = {
             "solved": {
@@ -131,8 +163,13 @@ class LeetCodeClient:
                 "Hard": 0,
             },
         }
-
-        for item in result.get("stat_status_pairs", []):
+        items = result.get("stat_status_pairs")
+        if not isinstance(items, list):
+            return ClientResult(
+                error=ClientErrorKind.INVALID_RESPONSE,
+                message="stat_status_pairs is not a list",
+            )
+        for item in items:
             difficulty_level = item.get("difficulty", {}).get("level")
             difficulty = DIFFICULTY_MAP.get(difficulty_level)
 
@@ -146,25 +183,38 @@ class LeetCodeClient:
                 stats["solved"]["All"] += 1
                 stats["solved"][difficulty] += 1
 
-        return stats
+        return ClientResult(data=stats)
 
-    def account_profile(self) -> dict | None:
-        status = self.user_status()
-        if not status or not status.get("isSignedIn"):
-            return None
-        problem_profile = self.problem_stats()
-        if not problem_profile:
-            return None
-        return {
-            "username": status.get("username"),
-            "real_name": status.get("realName"),
-            "avatar": status.get("avatar"),
-            "is_premium": status.get("isPremium"),
-            "solved": problem_profile.get("solved"),
-            "total": problem_profile.get("total"),
-        }
+    def account_profile(self) -> ClientResult:
+        status_result = self.user_status()
+        if not status_result.ok:
+            return status_result
+        status = status_result.data
+        problem_profile_result = self.problem_stats()
+        if not problem_profile_result.ok:
+            return problem_profile_result
+        problem_profile = problem_profile_result.data
+        if not isinstance(status, dict):
+            return ClientResult(error=ClientErrorKind.INVALID_RESPONSE)
+        if not status.get("isSignedIn"):
+            return ClientResult(error=ClientErrorKind.UNAUTHORIZED)
+        if not isinstance(problem_profile, dict):
+            return ClientResult(
+                error=ClientErrorKind.INVALID_RESPONSE,
+                message="problem stats is not a dict",
+            )
+        return ClientResult(
+            data={
+                "username": status.get("username"),
+                "real_name": status.get("realName"),
+                "avatar": status.get("avatar"),
+                "is_premium": status.get("isPremium"),
+                "solved": problem_profile.get("solved"),
+                "total": problem_profile.get("total"),
+            }
+        )
 
-    def problem_list(self, limit: int = 50, skip: int = 0) -> dict | None:
+    def problem_list(self, limit: int = 50, skip: int = 0) -> ClientResult:
         payload = {
             "operationName": "problemsetQuestionList",
             "query": PROBLEM_LIST_QUERY,
@@ -179,14 +229,18 @@ class LeetCodeClient:
             response = self.client.post("/graphql/", json=payload, timeout=10)
             response.raise_for_status()
             result = response.json()
-        except (httpx.HTTPError, ValueError):
-            return None
+        except httpx.RequestError:
+            return ClientResult(error=ClientErrorKind.NETWORK)
+        except httpx.HTTPStatusError:
+            return ClientResult(error=ClientErrorKind.HTTP)
+        except ValueError:
+            return ClientResult(error=ClientErrorKind.INVALID_JSON)
         data = result.get("data", {})
         if not isinstance(data, dict):
-            return None
-        return data.get("problemsetQuestionList")
+            return ClientResult(error=ClientErrorKind.INVALID_RESPONSE)
+        return ClientResult(data=data.get("problemsetQuestionList"))
 
-    def problem_detail(self, title_slug: str) -> dict | None:
+    def problem_detail(self, title_slug: str) -> ClientResult:
         payload = {
             "operationName": "questionData",
             "query": QUESTION_DETAIL_QUERY,
@@ -198,16 +252,20 @@ class LeetCodeClient:
             response = self.client.post("/graphql/", json=payload, timeout=10)
             response.raise_for_status()
             result = response.json()
-        except (httpx.HTTPError, ValueError):
-            return None
+        except httpx.RequestError:
+            return ClientResult(error=ClientErrorKind.NETWORK)
+        except httpx.HTTPStatusError:
+            return ClientResult(error=ClientErrorKind.HTTP)
+        except ValueError:
+            return ClientResult(error=ClientErrorKind.INVALID_JSON)
         data = result.get("data", {})
         if not isinstance(data, dict):
-            return None
-        return data.get("question")
+            return ClientResult(error=ClientErrorKind.INVALID_RESPONSE)
+        return ClientResult(data=data.get("question"))
 
     def submit_solution(
         self, title_slug: str, question_id: str, code: str
-    ) -> int | None:
+    ) -> ClientResult:
         payload = {
             "lang": "python3",
             "question_id": question_id,
@@ -215,7 +273,7 @@ class LeetCodeClient:
         }
         csrftoken = self.client.cookies.get("csrftoken")
         if not csrftoken:
-            return None
+            return ClientResult(error=ClientErrorKind.MISSING_CSRF)
         try:
             response = self.client.post(
                 f"/problems/{title_slug}/submit/",
@@ -228,21 +286,33 @@ class LeetCodeClient:
             )
             response.raise_for_status()
             result = response.json()
-        except (httpx.HTTPError, ValueError):
-            return None
+        except httpx.RequestError:
+            return ClientResult(error=ClientErrorKind.NETWORK)
+        except httpx.HTTPStatusError:
+            return ClientResult(error=ClientErrorKind.HTTP)
+        except ValueError:
+            return ClientResult(error=ClientErrorKind.INVALID_JSON)
         submission_id = result.get("submission_id")
-        return submission_id if isinstance(submission_id, int) else None
+        if not isinstance(submission_id, int):
+            return ClientResult(error=ClientErrorKind.INVALID_RESPONSE)
+        return ClientResult(data=submission_id)
 
-    def get_submission_result(self, submission_id: int) -> dict | None:
+    def get_submission_result(self, submission_id: int) -> ClientResult:
         try:
             response = self.client.get(
                 f"/submissions/detail/{submission_id}/check/", timeout=10
             )
             response.raise_for_status()
             result = response.json()
-        except (httpx.HTTPError, ValueError):
-            return None
-        return result
+        except httpx.RequestError:
+            return ClientResult(error=ClientErrorKind.NETWORK)
+        except httpx.HTTPStatusError:
+            return ClientResult(error=ClientErrorKind.HTTP)
+        except ValueError:
+            return ClientResult(error=ClientErrorKind.INVALID_JSON)
+        if not isinstance(result, dict):
+            return ClientResult(error=ClientErrorKind.INVALID_RESPONSE)
+        return ClientResult(data=result)
 
     def close(self) -> None:
         self.client.close()

@@ -23,9 +23,11 @@ class ParseQuestionIdResult:
     question_id: str | None = None
     error: QuestionIdError | None = None
 
+    @property
     def ok(self) -> bool:
         return self.error is None
 
+    @property
     def error_message(self) -> str | None:
         if self.error is None:
             return None

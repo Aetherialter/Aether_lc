@@ -3,7 +3,7 @@ from time import sleep
 from typer import Exit
 
 from aether_lc.auth import load_session
-from aether_lc.client import LeetCodeClient
+from aether_lc.client import ClientErrorKind, LeetCodeClient
 from aether_lc.problem import (
     ProblemDetail,
     ProblemSummary,
@@ -17,6 +17,30 @@ from aether_lc.workspace import WorkspaceError, parse_solution_submission
 
 
 MAX_ATTEMPTS = 10
+
+
+def _client_error_message(kind: ClientErrorKind) -> str:
+    match kind:
+        case ClientErrorKind.NETWORK:
+            return "网络请求失败, 请检查网络连接"
+
+        case ClientErrorKind.HTTP:
+            return "LeetCode 接口返回异常, 请稍后重试"
+
+        case ClientErrorKind.INVALID_JSON:
+            return "LeetCode 返回内容无法解析, 请稍后重试"
+
+        case ClientErrorKind.INVALID_RESPONSE:
+            return "LeetCode 接口数据结构异常, 可能是接口变更"
+
+        case ClientErrorKind.UNAUTHORIZED:
+            return "登录态无效或已过期, 请重新执行 lc login"
+
+        case ClientErrorKind.MISSING_CSRF:
+            return "缺少提交凭证 csrftoken, 请重新执行 lc login"
+
+        case _:
+            return "未知客户端错误"
 
 
 def _load_cookies_from_session() -> dict[str, str]:
@@ -33,8 +57,8 @@ def _load_cookies_from_session() -> dict[str, str]:
 
 def _parse_question_id_or_exit(question_id: str) -> str:
     parse_result = parse_question_id(question_id)
-    if not parse_result.ok():
-        error(parse_result.error_message() or "题号解析失败")
+    if not parse_result.ok:
+        error(parse_result.error_message or "题号解析失败")
         raise Exit(1)
     assert parse_result.question_id is not None
     return parse_result.question_id
@@ -47,16 +71,20 @@ def _find_problem_summary_by_question_id_online(
     limit, skip = 100, 0
     while True:
         problem_list_data = client.problem_list(limit=limit, skip=skip)
-        if not problem_list_data:
-            error("获取题目索引失败")
+        if not problem_list_data.ok:
+            error(_client_error_message(problem_list_data.error))
             raise Exit(1)
-        questions = problem_list_data.get("questions", [])
+        problem_list = problem_list_data.data
+        if not isinstance(problem_list, dict):
+            error(_client_error_message(ClientErrorKind.INVALID_RESPONSE))
+            raise Exit(1)
+        questions = problem_list.get("questions", [])
         problem_summaries = normalize_problem_summaries(questions)
         problem_summary = find_problem_by_id(problem_summaries, question_id)
         if problem_summary:
             return problem_summary
         skip += limit
-        total = problem_list_data.get("total") or 0
+        total = problem_list.get("total") or 0
         if not questions or skip >= total:
             error(f"未找到题号 {question_id}")
             raise Exit(1)
@@ -66,10 +94,14 @@ def get_user_status() -> dict:
     cookies = _load_cookies_from_session()
     with LeetCodeClient(cookies) as client:
         user_status = client.user_status()
-    if not user_status or not user_status.get("isSignedIn"):
-        error("session 有问题或已过期")
+    if not user_status.ok:
+        error(_client_error_message(user_status.error))
         raise Exit(1)
-    return user_status
+    status = user_status.data
+    if not isinstance(status, dict) or not status.get("isSignedIn"):
+        error(_client_error_message(ClientErrorKind.UNAUTHORIZED))
+        raise Exit(1)
+    return user_status.data
 
 
 def get_account_profile() -> dict:
@@ -77,10 +109,10 @@ def get_account_profile() -> dict:
     with LeetCodeClient(cookies) as client:
         with loading("正在获取账户信息..."):
             account_profile = client.account_profile()
-    if not account_profile:
-        error("获取账户信息失败")
+    if not account_profile.ok:
+        error(_client_error_message(account_profile.error))
         raise Exit(1)
-    return account_profile
+    return account_profile.data
 
 
 def get_problem_summaries(limit: int = 50, skip: int = 0) -> list[ProblemSummary]:
@@ -88,10 +120,18 @@ def get_problem_summaries(limit: int = 50, skip: int = 0) -> list[ProblemSummary
     with LeetCodeClient(cookies) as client:
         with loading("正在获取题目索引..."):
             problem_list_data = client.problem_list(limit=limit, skip=skip)
-    if not problem_list_data:
-        error("获取题目索引失败")
+    if not problem_list_data.ok:
+        error(_client_error_message(problem_list_data.error))
         raise Exit(1)
-    questions = problem_list_data.get("questions", [])
+    problem_list = problem_list_data.data
+    if not isinstance(problem_list, dict):
+        error(_client_error_message(ClientErrorKind.INVALID_RESPONSE))
+        raise Exit(1)
+    questions = problem_list.get("questions", [])
+
+    if not isinstance(questions, list):
+        error("题目获取失败")
+        raise Exit(1)
     return normalize_problem_summaries(questions)
 
 
@@ -106,10 +146,10 @@ def get_problem_detail_by_question_id(question_id: str) -> ProblemDetail:
             )
         with loading("正在获取题目详情..."):
             problem_detail_data = client.problem_detail(problem_summary.title_slug)
-        if not problem_detail_data:
-            error(f"获取题目详情失败: {problem_summary.title_slug}")
+        if not problem_detail_data.ok:
+            error(_client_error_message(problem_detail_data.error))
             raise Exit(1)
-        problem_detail = normalize_problem_detail(problem_detail_data)
+        problem_detail = normalize_problem_detail(problem_detail_data.data)
     return problem_detail
 
 
@@ -126,17 +166,21 @@ def submit_current_solution() -> dict | None:
     cookies = _load_cookies_from_session()
     with LeetCodeClient(cookies) as client:
         submission_id = client.submit_solution(title_slug, submit_question_id, code)
-        if not submission_id:
-            error("提交失败，请检查登录状态或网络")
+        if not submission_id.ok:
+            error(_client_error_message(submission_id.error))
             raise Exit(1)
 
         for _ in range(MAX_ATTEMPTS):
-            result = client.get_submission_result(submission_id)
-            if result is None:
-                error("获取判题结果失败")
+            result = client.get_submission_result(submission_id.data)
+            if not result.ok:
+                error(_client_error_message(result.error))
                 raise Exit(1)
-            state = result.get("state")
+            result_data = result.data
+            if not isinstance(result_data, dict):
+                error(_client_error_message(ClientErrorKind.INVALID_RESPONSE))
+                raise Exit(1)
+            state = result_data.get("state")
             if state not in {"PENDING", "STARTED"}:
-                return result
+                return result_data
             sleep(0.5)
     return None
