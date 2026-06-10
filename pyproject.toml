@@ -1,6 +1,6 @@
 [project]
 name = "aether-lc"
-version = "0.5.3"
+version = "0.5.4"
 description = "Local coding workflow CLI for LeetCode CN."
 readme = "README.md"
 license = "MIT"

@@ -104,7 +104,10 @@ class LeetCodeClient:
             result = response.json()
         except (httpx.HTTPError, ValueError):
             return None
-        return result.get("data", {}).get("userStatus")
+        data = result.get("data", {})
+        if not isinstance(data, dict):
+            return None
+        return data.get("userStatus")
 
     def problem_stats(self) -> dict | None:
         try:
@@ -178,7 +181,10 @@ class LeetCodeClient:
             result = response.json()
         except (httpx.HTTPError, ValueError):
             return None
-        return result.get("data", {}).get("problemsetQuestionList")
+        data = result.get("data", {})
+        if not isinstance(data, dict):
+            return None
+        return data.get("problemsetQuestionList")
 
     def problem_detail(self, title_slug: str) -> dict | None:
         payload = {
@@ -194,7 +200,10 @@ class LeetCodeClient:
             result = response.json()
         except (httpx.HTTPError, ValueError):
             return None
-        return result.get("data", {}).get("question")
+        data = result.get("data", {})
+        if not isinstance(data, dict):
+            return None
+        return data.get("question")
 
     def submit_solution(
         self, title_slug: str, question_id: str, code: str
