@@ -90,6 +90,18 @@ def _find_problem_summary_by_question_id_online(
             raise Exit(1)
 
 
+def _validate_show_options(limit: int, skip: int) -> None:
+    if limit <= 0:
+        error("limit 必须是正整数")
+        raise Exit(1)
+    if limit > 100:
+        error("limit 超过单次查询上限，最大为 100")
+        raise Exit(1)
+    if skip < 0:
+        error("skip 必须是非负整数")
+        raise Exit(1)
+
+
 def get_user_status() -> dict:
     cookies = _load_cookies_from_session()
     with LeetCodeClient(cookies) as client:
@@ -116,6 +128,7 @@ def get_account_profile() -> dict:
 
 
 def get_problem_summaries(limit: int = 50, skip: int = 0) -> list[ProblemSummary]:
+    _validate_show_options(limit, skip)
     cookies = _load_cookies_from_session()
     with LeetCodeClient(cookies) as client:
         with loading("正在获取题目索引..."):

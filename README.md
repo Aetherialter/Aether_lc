@@ -2,7 +2,7 @@
 
 一个面向 LeetCode 中文站的轻量本地刷题 CLI。它复用浏览器登录态，在线获取题目，生成根目录单文件 `solution.py`，并支持本地测试和远程提交。
 
-当前版本：`v0.5.5`
+当前版本：`v0.5.6`
 
 ## 核心能力
 
@@ -50,7 +50,7 @@ uv run lc submit
 | `lc login` | 读取或手动录入 LeetCode 中文站 Cookie |
 | `lc status` | 检查当前登录态 |
 | `lc profile` | 展示账号和刷题统计 |
-| `lc show --limit 20 --skip 0` | 分页展示题目索引 |
+| `lc show --limit 20 --skip 0` | 分页展示题目索引，`limit` 单次最大为 100 |
 | `lc get <题号>` | 在线展示题目详情 |
 | `lc solve <题号>` | 覆盖生成根目录 `solution.py` |
 | `lc test` | 运行本地 `solution.py` |
@@ -95,6 +95,7 @@ class Solution:
 - 当前只维护根目录单个 `solution.py`，不会生成每题独立目录。
 - 当前不保存完整题面到本地，也不引入本地数据库。
 - `lc solve` 会强制覆盖 `solution.py`。
+- `lc show` 的 `limit` 必须为正整数且不超过 100，`skip` 必须为非负整数。
 - `lc test` 默认隐藏 Python traceback，只展示本地测试通过或失败。
 - 如果 `run_cases()` 中没有断言，`lc test` 显示通过是当前轻量化设计允许的行为。
 - 树、链表等题型中，LeetCode 模板里的 `TreeNode` / `ListNode` 定义默认保持注释状态；如需本地构造用例，请自行取消注释并编写测试数据。
@@ -150,6 +151,7 @@ tests/
 - `v0.5.x`: 远程提交上线后的 bugfix patch 线。
 - `v0.5.4`: 修复 GraphQL `data: null` 导致 traceback，并精简 README。
 - `v0.5.5`: 引入客户端错误结果类型，收敛 service 层错误处理并补充边界测试。
+- `v0.5.6`: 收束 `lc show` 参数校验，避免非法分页参数触发远端接口异常提示。
 - `v0.6`: 稳定性与诊断完整修复版。
 - `v0.7`: 轻量缓存。
 - `v0.8`: 样例提取原型。

@@ -41,6 +41,38 @@ def test_get_problem_summaries_exits_on_invalid_response(monkeypatch) -> None:
         service.get_problem_summaries()
 
 
+def test_get_problem_summaries_rejects_non_positive_limit(monkeypatch) -> None:
+    def fail_load_session():
+        raise AssertionError("should not load session for invalid limit")
+
+    monkeypatch.setattr(service, "load_session", fail_load_session)
+
+    with pytest.raises(Exit):
+        service.get_problem_summaries(limit=0, skip=0)
+
+
+def test_get_problem_summaries_rejects_limit_over_single_query_cap(
+    monkeypatch,
+) -> None:
+    def fail_load_session():
+        raise AssertionError("should not load session for invalid limit")
+
+    monkeypatch.setattr(service, "load_session", fail_load_session)
+
+    with pytest.raises(Exit):
+        service.get_problem_summaries(limit=101, skip=0)
+
+
+def test_get_problem_summaries_rejects_negative_skip(monkeypatch) -> None:
+    def fail_load_session():
+        raise AssertionError("should not load session for invalid skip")
+
+    monkeypatch.setattr(service, "load_session", fail_load_session)
+
+    with pytest.raises(Exit):
+        service.get_problem_summaries(limit=3, skip=-1)
+
+
 def test_submit_current_solution_returns_submission_result_data(monkeypatch) -> None:
     class SubmitClient(FakeClient):
         def submit_solution(
