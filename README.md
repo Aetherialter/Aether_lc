@@ -111,6 +111,18 @@ class Solution:
 
 该文件可能包含敏感 Cookie 信息，已在 `.gitignore` 中忽略。发布前请确认根目录 `solution.py` 为空，避免把个人解法提交到公开仓库。
 
+## 登录态说明
+
+Aether_lc 会把浏览器 Cookie 的本地副本保存到 `.aether_lc/session.json`。本地保存的 Cookie 不会延长 LeetCode 登录态有效期；实际是否有效以 LeetCode 服务端验证为准。
+
+如果浏览器 Cookie 刷新，或旧 Cookie 被服务端判定失效，CLI 可能在 `lc status`、`lc profile` 或 `lc submit` 时提示重新执行：
+
+```powershell
+uv run lc login
+```
+
+`lc show` 和 `lc get` 访问公开题目数据，可能在登录态失效时仍然可用。后续 `v0.6` 会通过 `lc doctor` 提供更完整的 session 与 Cookie 诊断。
+
 ## 开发与验证
 
 ```powershell
